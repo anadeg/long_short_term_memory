@@ -53,6 +53,15 @@ class LstmParam:
         self.bf -= lr * self.bf_diff
         self.bo -= lr * self.bo_diff
 
+        self.wg_diff = np.zeros_like(self.wg)
+        self.wi_diff = np.zeros_like(self.wi)
+        self.wf_diff = np.zeros_like(self.wf)
+        self.wo_diff = np.zeros_like(self.wo)
+        self.bg_diff = np.zeros_like(self.bg)
+        self.bi_diff = np.zeros_like(self.bi)
+        self.bf_diff = np.zeros_like(self.bf)
+        self.bo_diff = np.zeros_like(self.bo)
+
 
 class LstmState:
     def __init__(self, mem_cell_ct, x_dim):
@@ -72,7 +81,7 @@ class LstmNode:
         self.param = lstm_param
         self.x_concatenated = None
 
-    def bottom_data_is(self, x, s_prev=None, h_prev=None):
+    def bottom_data(self, x, s_prev=None, h_prev=None):
         if s_prev is None:
             s_prev = np.zeros_like(self.state.s)
         if h_prev is None:
@@ -85,7 +94,7 @@ class LstmNode:
         self.state.g = np.tanh(np.dot(self.param.wg, xc) + self.param.bg)
         self.state.i = sigmoid(np.dot(self.param.wi, xc) + self.param.bi)
         self.state.f = sigmoid(np.dot(self.param.wf, xc) + self.param.bf)
-        self.state.o = np.tanh(np.dot(self.param.wo, xc) + self.param.bo)
+        self.state.o = sigmoid(np.dot(self.param.wo, xc) + self.param.bo)
         self.state.s = self.state.g * self.state.i + s_prev * self.state.f
         self.state.h = self.state.s * self.state.o
 
@@ -100,7 +109,7 @@ class LstmNode:
 
         di_input = sigmoid_derivative(self.state.i) * di
         df_input = sigmoid_derivative(self.state.f) * df
-        do_input = tanh_derivative(self.state.o) * do
+        do_input = sigmoid_derivative(self.state.o) * do
         dg_input = tanh_derivative(self.state.g) * dg
 
         self.param.wi_diff += np.outer(di_input, self.x_concatenated)
@@ -161,11 +170,11 @@ class LstmNetwork():
 
         idx = len(self.x_list) - 1
         if idx == 0:
-            self.lstm_node_list[idx].bottom_data_is(x)
+            self.lstm_node_list[idx].bottom_data(x)
         else:
             s_prev = self.lstm_node_list[idx - 1].state.s
             h_prev = self.lstm_node_list[idx - 1].state.h
-            self.lstm_node_list[idx].bottom_data_is(x, s_prev, h_prev)
+            self.lstm_node_list[idx].bottom_data(x, s_prev, h_prev)
 
     def feature_engineering(self, x, y):
         self.coefficient = np.maximum(self.find_coefficient(x), self.find_coefficient(y))
@@ -178,7 +187,7 @@ class LstmNetwork():
 
         loss = np.inf
         cur_iter = 0
-        while loss > error:
+        while loss > error and cur_iter < 1000:
             cur_iter += 1
             for ind in range(len(y_train)):
                 self.insert_x(x_train[ind])
@@ -203,15 +212,18 @@ class LstmNetwork():
         prediction = []
 
         for i in range(amount):
-            if i != 0:
-                for ind in range(len(x_train)):
-                    self.insert_x(x_train[ind])
-            to_slide = np.array([self.lstm_node_list[ind].state.h[0]
-                            for ind in range(len(x_train))]).reshape(-1, 1)
+            # if i != 0:
+            #     for ind in range(len(x_train)):
+            #         self.insert_x(x_train[ind])
+            for ind in range(len(x_train)):
+                self.insert_x(x_train[ind])
+            # to_slide = np.array([self.lstm_node_list[ind].state.h[0]
+            #                 for ind in range(len(x_train))]).reshape(-1, 1)
+            to_slide = np.array([self.lstm_node_list[-1].state.h[0]]).reshape(-1, 1)
             x_train = x_train[:, 1:]
             x_train = np.c_[x_train, to_slide]
-            y_train = to_slide
-            prediction.append(to_slide * self.coefficient)
+            # y_train = to_slide
+            prediction.append(to_slide[0][0] * self.coefficient)
             self.x_clear()
         return prediction
 

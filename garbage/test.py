@@ -1,6 +1,6 @@
 import numpy as np
 
-from main import LstmParam, LstmNetwork
+from garbage.main import LstmParam, LstmNetwork
 
 
 def make_window(sequence, size=-1):
@@ -18,12 +18,33 @@ def find_coefficient(x):
     return coefficient
 
 
+def test_function_1(x):
+    return 0.13 * x + 0.75
+
+
+def test_function_2(x):
+    return 0.3 * x ** 0.5
+
+
+def test_function_3(x):
+    return x % 2 + 1
+
+
 def example_0():
+    TRAIN_SIZE = 12
+    PREDICT_NUMBER = 3
     np.random.seed(0)
 
     # x = np.array([[1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610]])
-    x = np.array([[(i+1) ** 2 for i in range(5)]])
-    mem_cell_ct = 4
+    # x = np.array([[test_function_3(i) for i in range(TRAIN_SIZE)]])
+
+    x = np.array([[10, 20, 30, 40, 50, 60],
+                  [20, 30, 40, 50, 60, 70],
+                  [30, 40, 50, 60, 70, 80],
+                  [40, 50, 60, 70, 80, 90],
+                  [50, 60, 70, 80, 90, 100]])
+
+    mem_cell_ct = 2
     x_dim = x.shape[-1] - 1
 
     lstm_param = LstmParam(mem_cell_ct, x_dim)
@@ -31,15 +52,21 @@ def example_0():
 
     # x_length = find_coefficient(x)
     # x = x / x_length
-    x_train = np.array([make_window(x[-1])])
-    y_train = np.array([x[-1][-1]])
+    x_train = x[:, :-1]
+    y_train = x[:, -1:]
 
-    # lstm_net.fit_one(x_train, y_train, lr=0.1, error=10 ** 6)
+    # lstm_net.fit_one(x_train, y_train, lr=0.1, error=10 ** (-6))
 
-    lstm_net.fit(x_train, y_train, lr=0.1, error=10**(-12))
+    lstm_net.fit(x_train, y_train, lr=0.1, error=1*10**(-2))
 
-    predictions = lstm_net.predict(x_train)
-    print(predictions)
+    x_predict = np.array([[60, 70, 80, 90, 100]])
+    predictions = lstm_net.predict(x_predict, amount=PREDICT_NUMBER)
+
+    predicted_values = ", ".join(str(pred) for pred in predictions)
+    print(f'predicted values:\t[{predicted_values}]')
+    # true_values = ", ".join([str(test_function_3(i)) for i in range(TRAIN_SIZE, TRAIN_SIZE + PREDICT_NUMBER)])
+    true_values = ", ".join([str(i * 10) for i in range(11, 11 + PREDICT_NUMBER)])
+    print(f'true values:\t\t[{true_values}]')
 
     # loss = np.inf
     # cur_iter = 0
