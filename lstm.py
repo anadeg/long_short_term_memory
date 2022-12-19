@@ -38,6 +38,8 @@ def function(x, type='linear'):
     match type:
         case 'linear':
             return 0.5 * x - 10
+        case 'geometrical':
+            return 1.5 ** x
         case 'square':
             return x ** 2
         case 'period':
@@ -47,7 +49,7 @@ def function(x, type='linear'):
 
 
 if __name__ == '__main__':
-    TYPE = 'linear'
+    TYPE = 'geometrical'
     raw_seq = [function(i + 1, type=TYPE) for i in range(TRAIN_SIZE)]
     n_steps = SPLIT_SIZE
     X, y = split_sequence(raw_seq, n_steps)
